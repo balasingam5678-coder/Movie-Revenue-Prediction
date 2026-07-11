@@ -2,110 +2,68 @@ import streamlit as st
 import pandas as pd
 import pickle
 
-# ----------------------------
-# Page Configuration
-# ----------------------------
-st.set_page_config(
-    page_title="Movie Revenue Prediction",
-    page_icon="🎬",
-    layout="centered"
-)
+# Load model
+with open("movie_revenue_model.pkl", "rb") as f:
+    model = pickle.load(f)
 
-# ----------------------------
-# Load Trained Model
-# ----------------------------
-with open("movie_revenue_model.pkl", "rb") as file:
-    model = pickle.load(file)
+# Load dataset
+df = pd.read_csv("movies.csv")
 
-# ----------------------------
-# Title
-# ----------------------------
+st.set_page_config(page_title="Movie Revenue Prediction", page_icon="🎬")
+
 st.title("🎬 Movie Revenue Prediction")
-st.write("Enter the movie details below to predict the expected revenue.")
+st.write("Enter the movie details below.")
 
-# ----------------------------
 # User Inputs
-# ----------------------------
 budget = st.number_input(
-    "Budget (in Million $)",
-    min_value=1.0,
-    value=50.0
+    "Budget ($)",
+    min_value=0,
+    value=int(df["budget"].median())
 )
 
 runtime = st.number_input(
     "Runtime (minutes)",
-    min_value=60,
-    max_value=240,
-    value=120
+    min_value=1,
+    value=int(df["runtime"].median())
 )
 
-genre = st.selectbox(
-    "Genre",
-    [
-        "Action",
-        "Comedy",
-        "Drama",
-        "Horror",
-        "Romance",
-        "Sci-Fi",
-        "Thriller"
-    ]
+popularity = st.number_input(
+    "Popularity",
+    min_value=0.0,
+    value=float(df["popularity"].median())
 )
 
-director_rating = st.slider(
-    "Director Rating",
-    1.0,
-    10.0,
-    7.0
+vote_average = st.number_input(
+    "Vote Average",
+    min_value=0.0,
+    max_value=10.0,
+    value=float(df["vote_average"].median())
 )
 
-star_power = st.slider(
-    "Star Power",
-    1.0,
-    10.0,
-    7.0
+vote_count = st.number_input(
+    "Vote Count",
+    min_value=0,
+    value=int(df["vote_count"].median())
 )
 
-# ----------------------------
-# Prediction
-# ----------------------------
 if st.button("Predict Revenue"):
 
-    input_df = pd.DataFrame({
-        "Budget": [budget],
-        "Runtime": [runtime],
-        "Genre": [genre],
-        "Director_Rating": [director_rating],
-        "Star_Power": [star_power]
-    })
+    # Create input dictionary
+    user_data = {
+        "budget": budget,
+        "runtime": runtime,
+        "popularity": popularity,
+        "vote_average": vote_average,
+        "vote_count": vote_count
+    }
 
-    # One-hot encoding
-    input_df = pd.get_dummies(input_df, columns=["Genre"])
+    # Create DataFrame
+    input_data = pd.DataFrame([user_data])
 
-    # Feature names used during training
-    training_columns = [
-        'Budget',
-        'Runtime',
-        'Director_Rating',
-        'Star_Power',
-        'Genre_Action',
-        'Genre_Comedy',
-        'Genre_Drama',
-        'Genre_Horror',
-        'Genre_Romance',
-        'Genre_Sci-Fi',
-        'Genre_Thriller'
-    ]
+    # Reorder columns to match model training
+    if hasattr(model, "feature_names_in_"):
+        input_data = input_data.reindex(columns=model.feature_names_in_, fill_value=0)
 
-    # Add missing columns
-    for col in training_columns:
-        if col not in input_df.columns:
-            input_df[col] = 0
+    prediction = model.predict(input_data)
 
-    # Arrange columns in correct order
-    input_df = input_df[training_columns]
-
-    # Predict
-    prediction = model.predict(input_df)[0]
-
-    st.success(f"🎉 Predicted Revenue: ${prediction:,.2f} Million")
+    st.success(f"🎉 Predicted Revenue: ${prediction[0]:,.2f}")
