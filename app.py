@@ -110,3 +110,7 @@ if st.button("Predict Revenue"):
     st.success(f"Predicted Revenue: ${prediction:,.2f} Million")
 
     st.balloons()
+with open("movie_revenue_model.pkl", "rb") as f:
+    model = pickle.load(f)
+
+print(model.feature_names_in_)
